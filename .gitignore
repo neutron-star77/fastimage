@@ -1,0 +1,9 @@
+# PicGo installer (don't commit 120MB exe)
+PicGo-*.exe
+
+# OS
+Thumbs.db
+.DS_Store
+
+# IDE
+.codebuddy/

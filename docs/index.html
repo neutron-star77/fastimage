@@ -1,0 +1,692 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FastImage 图床管理</title>
+<style>
+:root {
+  --bg: #0d1117;
+  --surface: #161b22;
+  --surface-hover: #1c2330;
+  --border: #30363d;
+  --text: #e6edf3;
+  --text-dim: #7d8590;
+  --accent: #58a6ff;
+  --accent-hover: #79b8ff;
+  --danger: #f85149;
+  --success: #3fb950;
+  --radius: 10px;
+  --shadow: 0 2px 12px rgba(0,0,0,0.3);
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
+}
+/* Login */
+.login-wrap {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  padding: 20px;
+}
+.login-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 48px 40px;
+  width: 100%;
+  max-width: 420px;
+  box-shadow: var(--shadow);
+}
+.login-card .logo {
+  text-align: center;
+  font-size: 28px;
+  font-weight: 700;
+  margin-bottom: 8px;
+}
+.login-card .logo span { color: var(--accent); }
+.login-card .subtitle {
+  text-align: center;
+  color: var(--text-dim);
+  font-size: 14px;
+  margin-bottom: 32px;
+}
+.login-card input {
+  width: 100%;
+  padding: 12px 16px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  color: var(--text);
+  font-size: 14px;
+  margin-bottom: 16px;
+  outline: none;
+  transition: border-color 0.2s;
+}
+.login-card input:focus { border-color: var(--accent); }
+.login-card .hint {
+  font-size: 12px;
+  color: var(--text-dim);
+  margin-bottom: 20px;
+  line-height: 1.6;
+}
+.login-card .hint a { color: var(--accent); text-decoration: none; }
+.login-card button {
+  width: 100%;
+  padding: 12px;
+  background: var(--accent);
+  border: none;
+  border-radius: var(--radius);
+  color: #fff;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+.login-card button:hover { background: var(--accent-hover); }
+/* Header */
+header {
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  padding: 14px 24px;
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+header .brand {
+  font-size: 20px;
+  font-weight: 700;
+}
+header .brand span { color: var(--accent); }
+.stats-bar {
+  display: flex;
+  gap: 24px;
+  flex: 1;
+}
+.stat-item {
+  display: flex;
+  flex-direction: column;
+}
+.stat-item .label { font-size: 11px; color: var(--text-dim); }
+.stat-item .value { font-size: 18px; font-weight: 600; }
+header .actions { display: flex; gap: 10px; }
+.btn-icon {
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  color: var(--text-dim);
+  cursor: pointer;
+  transition: all 0.2s;
+  font-size: 16px;
+}
+.btn-icon:hover { color: var(--text); border-color: var(--accent); background: var(--surface-hover); }
+/* Upload zone */
+.upload-zone {
+  margin: 20px 24px;
+  padding: 28px;
+  border: 2px dashed var(--border);
+  border-radius: var(--radius);
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.2s;
+  background: var(--surface);
+}
+.upload-zone:hover, .upload-zone.dragover {
+  border-color: var(--accent);
+  background: var(--surface-hover);
+}
+.upload-zone p { color: var(--text-dim); font-size: 14px; }
+.upload-zone .icon { font-size: 32px; margin-bottom: 8px; }
+/* Toolbar */
+.toolbar {
+  display: flex;
+  gap: 12px;
+  padding: 0 24px 16px;
+  flex-wrap: wrap;
+}
+.toolbar input[type="search"] {
+  flex: 1;
+  min-width: 200px;
+  padding: 8px 14px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  color: var(--text);
+  font-size: 13px;
+  outline: none;
+}
+.toolbar input[type="search"]:focus { border-color: var(--accent); }
+.toolbar select {
+  padding: 8px 14px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  color: var(--text);
+  font-size: 13px;
+  cursor: pointer;
+}
+/* Image grid */
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 16px;
+  padding: 0 24px 40px;
+}
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+  transition: all 0.2s;
+  display: flex;
+  flex-direction: column;
+}
+.card:hover {
+  border-color: var(--accent);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow);
+}
+.card .thumb {
+  width: 100%;
+  height: 160px;
+  object-fit: cover;
+  background: var(--bg);
+  cursor: pointer;
+}
+.card .info {
+  padding: 10px 12px;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.card .filename {
+  font-size: 12px;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.card .meta {
+  font-size: 11px;
+  color: var(--text-dim);
+  display: flex;
+  gap: 8px;
+}
+.card .actions {
+  display: flex;
+  gap: 6px;
+  padding: 0 12px 12px;
+}
+.card .actions button {
+  flex: 1;
+  padding: 6px;
+  font-size: 12px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--text);
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.card .actions button:hover { border-color: var(--accent); color: var(--accent); }
+.card .actions button.del:hover { border-color: var(--danger); color: var(--danger); }
+/* Loading */
+.loading { text-align: center; padding: 60px; color: var(--text-dim); }
+.spinner {
+  width: 32px;
+  height: 32px;
+  border: 3px solid var(--border);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+  margin: 0 auto 12px;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+/* Empty */
+.empty { text-align: center; padding: 80px 20px; color: var(--text-dim); }
+.empty .icon { font-size: 48px; margin-bottom: 12px; }
+/* Toast */
+.toast {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  padding: 12px 20px;
+  border-radius: var(--radius);
+  font-size: 14px;
+  z-index: 9999;
+  animation: slideIn 0.3s ease;
+  box-shadow: var(--shadow);
+}
+.toast.success { background: var(--success); color: #fff; }
+.toast.error { background: var(--danger); color: #fff; }
+.toast.info { background: var(--accent); color: #fff; }
+@keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+/* Lightbox */
+.lightbox {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.85);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2000;
+  cursor: zoom-out;
+}
+.lightbox img { max-width: 90%; max-height: 90%; border-radius: 8px; }
+/* Modal */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2000;
+}
+.modal {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 32px;
+  width: 90%;
+  max-width: 380px;
+  text-align: center;
+}
+.modal h3 { margin-bottom: 8px; font-size: 18px; }
+.modal p { color: var(--text-dim); font-size: 14px; margin-bottom: 24px; }
+.modal .actions { display: flex; gap: 12px; }
+.modal .actions button {
+  flex: 1;
+  padding: 10px;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--text);
+  cursor: pointer;
+  font-size: 14px;
+  transition: all 0.15s;
+}
+.modal .actions button:hover { border-color: var(--accent); }
+.modal .actions button.confirm { background: var(--danger); border-color: var(--danger); color: #fff; }
+.modal .actions button.confirm:hover { opacity: 0.9; }
+</style>
+</head>
+<body>
+
+<!-- Login Screen -->
+<div class="login-wrap" id="loginScreen">
+  <div class="login-card">
+    <div class="logo">⚡ Fast<span>Image</span></div>
+    <div class="subtitle">GitHub + jsDelivr 图床管理</div>
+    <input type="password" id="tokenInput" placeholder="GitHub Fine-grained PAT" autocomplete="off">
+    <div class="hint">
+      需要 Fine-grained PAT，权限：Contents (Read and Write)。<br>
+      <a href="https://github.com/settings/personal-access-tokens/new" target="_blank">去创建 Token →</a>
+    </div>
+    <button onclick="doLogin()">登录</button>
+  </div>
+</div>
+
+<!-- Dashboard -->
+<div id="dashboard" style="display:none">
+  <header>
+    <div class="brand">⚡ Fast<span>Image</span></div>
+    <div class="stats-bar">
+      <div class="stat-item">
+        <span class="label">图片总数</span>
+        <span class="value" id="statCount">-</span>
+      </div>
+      <div class="stat-item">
+        <span class="label">存储用量</span>
+        <span class="value" id="statSize">-</span>
+      </div>
+      <div class="stat-item">
+        <span class="label">最近上传</span>
+        <span class="value" id="statRecent">-</span>
+      </div>
+    </div>
+    <div class="actions">
+      <button class="btn-icon" onclick="loadImages()" title="刷新">⟳</button>
+      <button class="btn-icon" onclick="doLogout()" title="退出">⏻</button>
+    </div>
+  </header>
+
+  <div class="upload-zone" id="uploadZone" onclick="document.getElementById('fileInput').click()">
+    <div class="icon">📤</div>
+    <p>拖拽图片到此处上传，或点击选择文件</p>
+    <input type="file" id="fileInput" multiple accept="image/*" style="display:none" onchange="handleFiles(this.files)">
+  </div>
+
+  <div class="toolbar">
+    <input type="search" id="searchInput" placeholder="搜索文件名..." oninput="renderGrid()">
+    <select id="filterYear" onchange="loadImages()"><option value="">全部年份</option></select>
+    <select id="filterMonth" onchange="loadImages()"><option value="">全部月份</option></select>
+  </div>
+
+  <div id="gridContainer"></div>
+</div>
+
+<script>
+const CONFIG = {
+  owner: 'neutron-star77',
+  repo: 'fastimage',
+  branch: 'main',
+  get cdn() { return `https://cdn.jsdelivr.net/gh/${this.owner}/${this.repo}@${this.branch}`; },
+  get api() { return `https://api.github.com/repos/${this.owner}/${this.repo}`; }
+};
+
+let allImages = [];
+let isLoading = false;
+
+// ---- Token / Auth ----
+function getToken() { return localStorage.getItem('fastimage_token'); }
+function doLogin() {
+  const token = document.getElementById('tokenInput').value.trim();
+  if (!token) return toast('请输入 Token', 'error');
+  localStorage.setItem('fastimage_token', token);
+  showDashboard();
+  loadImages();
+}
+function doLogout() {
+  localStorage.removeItem('fastimage_token');
+  location.reload();
+}
+function showDashboard() {
+  document.getElementById('loginScreen').style.display = 'none';
+  document.getElementById('dashboard').style.display = 'block';
+}
+
+// ---- GitHub API helpers ----
+async function ghGet(path) {
+  const res = await fetch(`${CONFIG.api}${path}`, {
+    headers: { 'Authorization': `Bearer ${getToken()}`, 'Accept': 'application/vnd.github+json' }
+  });
+  if (!res.ok) throw new Error(`GET ${path}: ${res.status}`);
+  return res.json();
+}
+async function ghDelete(path, sha) {
+  const res = await fetch(`${CONFIG.api}${path}`, {
+    method: 'DELETE',
+    headers: { 'Authorization': `Bearer ${getToken()}`, 'Accept': 'application/vnd.github+json', 'Content-Type': 'application/json' },
+    body: JSON.stringify({ message: `delete: ${path}`, sha, branch: CONFIG.branch })
+  });
+  if (!res.ok) throw new Error(`DELETE ${path}: ${res.status}`);
+  return res.json();
+}
+async function ghPut(path, content, message) {
+  const res = await fetch(`${CONFIG.api}${path}`, {
+    method: 'PUT',
+    headers: { 'Authorization': `Bearer ${getToken()}`, 'Accept': 'application/vnd.github+json', 'Content-Type': 'application/json' },
+    body: JSON.stringify({ message: message || `upload: ${path}`, content, branch: CONFIG.branch })
+  });
+  if (!res.ok) throw new Error(`PUT ${path}: ${res.status}`);
+  return res.json();
+}
+
+// ---- List images (recursive year/month) ----
+async function loadImages() {
+  if (isLoading) return;
+  isLoading = true;
+  const container = document.getElementById('gridContainer');
+  container.innerHTML = `<div class="loading"><div class="spinner"></div>加载中...</div>`;
+
+  try {
+    const rootItems = await ghGet('/contents/');
+    const yearDirs = rootItems.filter(i => i.type === 'dir' && /^\d{4}$/.test(i.name));
+    const yearFilter = document.getElementById('filterYear').value;
+
+    // Update year filter options
+    const curYear = yearFilter;
+    const yearSelect = document.getElementById('filterYear');
+    yearSelect.innerHTML = '<option value="">全部年份</option>' + 
+      yearDirs.map(y => `<option value="${y.name}" ${y.name===curYear?'selected':''}>${y.name}</option>`).join('');
+
+    const dirsToScan = yearFilter ? yearDirs.filter(y => y.name === yearFilter) : yearDirs;
+    const monthFilter = document.getElementById('filterMonth').value;
+
+    // Get all month dirs in parallel
+    const monthPromises = dirsToScan.map(y => ghGet(`/contents/${y.name}`));
+    const monthResults = await Promise.all(monthPromises);
+
+    // Scan each month dir for files
+    const scanPromises = [];
+    for (let i = 0; i < dirsToScan.length; i++) {
+      const months = monthResults[i].filter(m => m.type === 'dir' && /^\d{2}$/.test(m.name));
+      const monthsToScan = monthFilter ? months.filter(m => m.name === monthFilter) : months;
+      for (const m of monthsToScan) {
+        scanPromises.push(ghGet(`/contents/${dirsToScan[i].name}/${m.name}`).then(files => ({
+          year: dirsToScan[i].name,
+          month: m.name,
+          files: files.filter(f => f.type === 'file' && /\.(png|jpg|jpeg|gif|webp|svg|bmp|ico)$/i.test(f.name))
+        })));
+      }
+    }
+    const scanResults = await Promise.all(scanPromises);
+
+    // Flatten
+    allImages = [];
+    for (const r of scanResults) {
+      for (const f of r.files) {
+        allImages.push({
+          name: f.name,
+          path: f.path,
+          sha: f.sha,
+          size: f.size,
+          url: `${CONFIG.cdn}/${f.path}`,
+          year: r.year,
+          month: r.month,
+          download: f.download_url
+        });
+      }
+    }
+    // Sort by path descending (newest first)
+    allImages.sort((a, b) => b.path.localeCompare(a.path));
+
+    updateStats();
+    renderGrid();
+  } catch (e) {
+    container.innerHTML = `<div class="empty"><div class="icon">⚠️</div><p>${e.message}</p></div>`;
+  }
+  isLoading = false;
+}
+
+// ---- Stats ----
+function updateStats() {
+  document.getElementById('statCount').textContent = allImages.length;
+  const totalBytes = allImages.reduce((s, i) => s + i.size, 0);
+  document.getElementById('statSize').textContent = formatSize(totalBytes);
+  document.getElementById('statRecent').textContent = allImages.length > 0 ? allImages[0].year + '/' + allImages[0].month : '-';
+}
+function formatSize(bytes) {
+  if (bytes < 1024) return bytes + ' B';
+  if (bytes < 1048576) return (bytes / 1024).toFixed(1) + ' KB';
+  if (bytes < 1073741824) return (bytes / 1048576).toFixed(1) + ' MB';
+  return (bytes / 1073741824).toFixed(1) + ' GB';
+}
+
+// ---- Render grid ----
+function renderGrid() {
+  const container = document.getElementById('gridContainer');
+  const query = document.getElementById('searchInput').value.toLowerCase().trim();
+
+  let filtered = allImages;
+  if (query) filtered = filtered.filter(i => i.name.toLowerCase().includes(query));
+
+  if (filtered.length === 0) {
+    container.innerHTML = `<div class="empty"><div class="icon">🖼️</div><p>${allImages.length === 0 ? '还没有上传任何图片' : '没有匹配的图片'}</p></div>`;
+    return;
+  }
+
+  container.innerHTML = `<div class="grid" id="grid"></div>`;
+  const grid = document.getElementById('grid');
+
+  // Use DocumentFragment for performance
+  const frag = document.createDocumentFragment();
+  for (const img of filtered) {
+    const card = document.createElement('div');
+    card.className = 'card';
+    card.innerHTML = `
+      <img class="thumb" loading="lazy" src="${img.url}" alt="${img.name}" onclick="openLightbox('${img.url}')">
+      <div class="info">
+        <div class="filename" title="${img.name}">${img.name}</div>
+        <div class="meta">
+          <span>${img.year}/${img.month}</span>
+          <span>${formatSize(img.size)}</span>
+        </div>
+      </div>
+      <div class="actions">
+        <button onclick="copyUrl('${img.url}')">复制链接</button>
+        <button class="del" onclick="confirmDelete('${img.path}','${img.sha}','${img.name}')">删除</button>
+      </div>
+    `;
+    frag.appendChild(card);
+  }
+  grid.appendChild(frag);
+}
+
+// ---- Copy URL ----
+async function copyUrl(url) {
+  try {
+    await navigator.clipboard.writeText(url);
+    toast('链接已复制', 'success');
+  } catch {
+    const ta = document.createElement('textarea');
+    ta.value = url;
+    document.body.appendChild(ta);
+    ta.select();
+    document.execCommand('copy');
+    document.body.removeChild(ta);
+    toast('链接已复制', 'success');
+  }
+}
+
+// ---- Delete ----
+function confirmDelete(path, sha, name) {
+  const overlay = document.createElement('div');
+  overlay.className = 'modal-overlay';
+  overlay.innerHTML = `
+    <div class="modal">
+      <h3>确认删除</h3>
+      <p>确定删除「${name}」吗？此操作不可撤销。</p>
+      <div class="actions">
+        <button onclick="this.closest('.modal-overlay').remove()">取消</button>
+        <button class="confirm" id="confirmDelBtn">删除</button>
+      </div>
+    </div>`;
+  document.body.appendChild(overlay);
+  document.getElementById('confirmDelBtn').onclick = async () => {
+    overlay.remove();
+    toast('删除中...', 'info');
+    try {
+      await ghDelete(`/contents/${path}`, sha);
+      // Purge jsDelivr cache
+      try { await fetch(`https://purge.jsdelivr.net/gh/${CONFIG.owner}/${CONFIG.repo}@${CONFIG.branch}/${path}`); } catch {}
+      toast('已删除', 'success');
+      loadImages();
+    } catch (e) {
+      toast('删除失败: ' + e.message, 'error');
+    }
+  };
+}
+
+// ---- Upload ----
+async function handleFiles(files) {
+  if (!files || files.length === 0) return;
+  toast(`正在上传 ${files.length} 张图片...`, 'info');
+
+  for (const file of files) {
+    try {
+      const hash = await calcHash(file);
+      const now = new Date();
+      const year = now.getFullYear();
+      const month = String(now.getMonth() + 1).padStart(2, '0');
+      const ext = file.name.split('.').pop() || 'png';
+      const filename = `${hash}.${ext}`;
+      const path = `${year}/${month}/${filename}`;
+
+      // Read as base64
+      const b64 = await fileToBase64(file);
+      await ghPut(`/contents/${path}`, b64, `upload: ${filename}`);
+
+      // Purge jsDelivr cache
+      try { await fetch(`https://purge.jsdelivr.net/gh/${CONFIG.owner}/${CONFIG.repo}@${CONFIG.branch}/${path}`); } catch {}
+
+    } catch (e) {
+      toast(`上传失败: ${file.name} - ${e.message}`, 'error');
+    }
+  }
+  toast('上传完成', 'success');
+  loadImages();
+}
+
+function fileToBase64(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const result = reader.result;
+      const base64 = result.split(',')[1];
+      resolve(base64);
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
+async function calcHash(file) {
+  const buf = await file.arrayBuffer();
+  const hashBuffer = await crypto.subtle.digest('SHA-256', buf);
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  return hashArray.slice(0, 8).map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
+// ---- Lightbox ----
+function openLightbox(url) {
+  const lb = document.createElement('div');
+  lb.className = 'lightbox';
+  lb.innerHTML = `<img src="${url}">`;
+  lb.onclick = () => lb.remove();
+  document.body.appendChild(lb);
+}
+
+// ---- Drag & Drop ----
+const uploadZone = document.getElementById('uploadZone');
+uploadZone.addEventListener('dragover', e => { e.preventDefault(); uploadZone.classList.add('dragover'); });
+uploadZone.addEventListener('dragleave', () => uploadZone.classList.remove('dragover'));
+uploadZone.addEventListener('drop', e => {
+  e.preventDefault();
+  uploadZone.classList.remove('dragover');
+  handleFiles(e.dataTransfer.files);
+});
+
+// ---- Toast ----
+function toast(msg, type) {
+  const t = document.createElement('div');
+  t.className = `toast ${type}`;
+  t.textContent = msg;
+  document.body.appendChild(t);
+  setTimeout(() => { t.style.opacity = '0'; setTimeout(() => t.remove(), 300); }, 3000);
+}
+
+// ---- Init ----
+if (getToken()) {
+  showDashboard();
+  loadImages();
+}
+</script>
+</body>
+</html>
